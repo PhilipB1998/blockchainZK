@@ -1,4 +1,4 @@
-package main
+package Mainone
 
 import (
 	"crypto/rand"

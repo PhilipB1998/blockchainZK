@@ -1,4 +1,4 @@
-package main
+package Mainone
 
 import (
 	"bufio"
@@ -130,7 +130,6 @@ func MsgToBigInt(msg []byte) *big.Int { // This is not secure
 	return qs1
 }
 
-
 func main() {
 	user1 := User{
 		NewKeys(),
@@ -140,7 +139,7 @@ func main() {
 	user2 := User{
 		NewKeys(),
 		nil,
-	}	
+	}
 	fmt.Println(".-------------------------------------------.")
 	fmt.Println("|  Hi! I'm the commitment equality bunny!   |")
 	fmt.Println("'-------------------------------------------'")
@@ -151,60 +150,48 @@ func main() {
 	fmt.Println("Please input message for first commitment: ")
 	curve := elliptic.P256()
 	nonce, _ := rand.Int(rand.Reader, curve.Params().N)
-	
+
 	reader := bufio.NewReader(os.Stdin)
-	input, err :=  reader.ReadString('\n')
+	input, err := reader.ReadString('\n')
 	if err != nil {
 		log.Panic(err)
 		return
 	}
-	
-	fmt.Printf("%s %v", "Creating first commitment for message: ", input )
+
+	fmt.Printf("%s %v", "Creating first commitment for message: ", input)
 
 	input = strings.TrimSuffix(input, "\n")
 	inputToByte := []byte(input)
 	inputToBigInt := MsgToBigInt(inputToByte)
 	r1, _ := rand.Int(rand.Reader, curve.Params().N)
 	commit1 := user1.NewCommitment(inputToBigInt, r1)
-	
 
-	fmt.Printf("%s %#v", "Produced following first commitment: ", commit1 )
+	fmt.Printf("%s %#v", "Produced following first commitment: ", commit1)
 
 	//SECOND COMMIT
 	fmt.Println("Please input message for second commitment: ")
 
-	input2, err :=  reader.ReadString('\n')
+	input2, err := reader.ReadString('\n')
 	if err != nil {
 		log.Panic(err)
 		return
 	}
 
-	fmt.Printf("%s %v", "Creating second commitment for message: ", input2 )
-	
+	fmt.Printf("%s %v", "Creating second commitment for message: ", input2)
+
 	input2 = strings.TrimSuffix(input2, "\n")
 	input2ToByte := []byte(input2)
 	input2ToBigInt := MsgToBigInt(input2ToByte)
 	r2, _ := rand.Int(rand.Reader, curve.Params().N)
 	commit2 := user2.NewCommitment(input2ToBigInt, r2)
 
-	fmt.Printf("%s %#v", "Produced following second commitment: ", commit2 )
-
+	fmt.Printf("%s %#v", "Produced following second commitment: ", commit2)
 
 	// EQUALITY PROOF
 	fmt.Println("Creating new equality proof")
-	proof := NewEqProofP256(inputToBigInt, r1, r2, nonce,  &user1.Keys.PublicKey, &user2.Keys.PublicKey)
-	sameMsg := proof.OpenP256(commit1, commit2, nonce, &user1.Keys.PublicKey,  &user2.Keys.PublicKey)
-	
+	proof := NewEqProofP256(inputToBigInt, r1, r2, nonce, &user1.Keys.PublicKey, &user2.Keys.PublicKey)
+	sameMsg := proof.OpenP256(commit1, commit2, nonce, &user1.Keys.PublicKey, &user2.Keys.PublicKey)
+
 	fmt.Println("Commits holds the same message: ", sameMsg)
 
-	
 }
-
-
-
-
-
-
-
-
-
