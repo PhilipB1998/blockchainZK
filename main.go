@@ -1,197 +1,131 @@
-package Mainone
+package main
 
 import (
-	"bufio"
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
-	"crypto/sha512"
 	"fmt"
-	"log"
 	"math/big"
-	"os"
-	"strings"
+	"github.com/xlab-si/emmy/crypto/common"
+	"github.com/xlab-si/emmy/crypto/ec"
 )
 
-type User struct {
-	Keys       *ecdsa.PrivateKey
-	Commitment *ecdsa.PublicKey
+
+type Verifier struct {
+	Group     *ec.Group
+	h         *ec.GroupElement
+	generator *ec.GroupElement
+	u         *ec.GroupElement
+	challenge *big.Int
 }
 
-type EqProof struct {
-	C  *big.Int
-	D  *big.Int
-	D1 *big.Int
-	D2 *big.Int
+type Prover struct {
+	Group     *ec.Group
+	generator *ec.GroupElement
+	x         *big.Int
+	r         *big.Int // ProofRandomData
 }
 
-type Commitment struct {
-	X *big.Int
-	Y *big.Int
-}
 
-func NewKeys() *ecdsa.PrivateKey {
-	a, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	return a
-}
+/*
+	- "github.com/xlab-si/emmy/crypto/ec"
+		Is a wrapper for the elliptic curve library (crypto/ecdsa)
+		Wraps elliptic curve group functions as well.
 
-func (u *User) NewCommitment(x, r *big.Int) *Commitment {
-	curve := elliptic.P256()
-	cx, cy := curve.ScalarBaseMult(x.Bytes())
-	dx, dy := curve.ScalarMult(u.Keys.X, u.Keys.Y, r.Bytes())
-	xx, yy := curve.Add(cx, cy, dx, dy)
-	return &Commitment{
-		xx, yy,
+	- "github.com/xlab-si/emmy/crypto/common"
+		Is a library for a lot of common cryptographic functions,
+		however we only use the GetRandomInt function with the gr
+*/
+
+func NewProver(curve ec.Curve) *Prover {
+	return &Prover{
+		Group: ec.NewGroup(curve),
 	}
 }
 
-func NewEqProofP256(x, r1, r2, nonce *big.Int, pk1 *ecdsa.PublicKey, pk2 *ecdsa.PublicKey) *EqProof {
-	curve := elliptic.P256()
-	curveParams := curve.Params()
-	q1x := pk1.X
-	q1y := pk1.Y
-	q2x := pk2.X
-	q2y := pk2.Y
-	w, _ := rand.Int(rand.Reader, curveParams.N)
-	n1, _ := rand.Int(rand.Reader, curveParams.N)
-	n2, _ := rand.Int(rand.Reader, curveParams.N)
-
-	w1x1, w1y1 := curveParams.ScalarBaseMult(w.Bytes())
-	w1x2, w1y2 := curveParams.ScalarMult(q1x, q1y, n1.Bytes())
-	w1x, w1y := curveParams.Add(w1x1, w1y1, w1x2, w1y2)
-
-	w2x2, w2y2 := curveParams.ScalarMult(q2x, q2y, n2.Bytes())
-	w2x, w2y := curveParams.Add(w1x1, w1y1, w2x2, w2y2)
-
-	hasher := sha512.New384()
-	_, _ = hasher.Write(w1x.Bytes())
-	_, _ = hasher.Write(w1y.Bytes())
-	_, _ = hasher.Write(w2x.Bytes())
-	_, _ = hasher.Write(w2y.Bytes())
-	_, _ = hasher.Write(nonce.Bytes())
-
-	c := new(big.Int).SetBytes(hasher.Sum(nil))
-	c.Mod(c, curveParams.N)
-
-	d := new(big.Int).Sub(w, new(big.Int).Mul(c, x))
-	d.Mod(d, curveParams.N)
-
-	d1 := new(big.Int).Sub(n1, new(big.Int).Mul(c, r1))
-	d1.Mod(d1, curveParams.N)
-
-	d2 := new(big.Int).Sub(n2, new(big.Int).Mul(c, r2))
-	d2.Mod(d2, curveParams.N)
-
-	return &EqProof{
-		c, d, d1, d2,
+func NewVerifier(curve ec.Curve) *Verifier {
+	return &Verifier{
+		Group: ec.NewGroup(curve),
 	}
 }
 
-func (eq *EqProof) OpenP256(b, c *Commitment, nonce *big.Int, pk1 *ecdsa.PublicKey, pk2 *ecdsa.PublicKey) bool {
-	curve1 := elliptic.P256()
-	curve := curve1.Params()
-	q1x := pk1.X
-	q1y := pk1.Y
-	q2x := pk2.X
-	q2y := pk2.Y
-
-	dx, dy := curve.ScalarBaseMult(eq.D.Bytes())
-	lhsx1, lhsy1 := curve.ScalarMult(q1x, q1y, eq.D1.Bytes())
-	lhsx2, lhsy2 := curve.ScalarMult(b.X, b.Y, eq.C.Bytes())
-	lhsx1, lhsy1 = curve.Add(dx, dy, lhsx1, lhsy1)
-	lhsx, lhsy := curve.Add(lhsx2, lhsy2, lhsx1, lhsy1)
-
-	rhsx1, rhsy1 := curve.ScalarMult(q2x, q2y, eq.D2.Bytes())
-	rhsx2, rhsy2 := curve.ScalarMult(c.X, c.Y, eq.C.Bytes())
-	rhsx1, rhsy1 = curve.Add(dx, dy, rhsx1, rhsy1)
-	rhsx, rhsy := curve.Add(rhsx2, rhsy2, rhsx1, rhsy1)
-
-	hasher := sha512.New384()
-	_, _ = hasher.Write(lhsx.Bytes())
-	_, _ = hasher.Write(lhsy.Bytes())
-	_, _ = hasher.Write(rhsx.Bytes())
-	_, _ = hasher.Write(rhsy.Bytes())
-	_, _ = hasher.Write(nonce.Bytes())
-
-	chal := new(big.Int).SetBytes(hasher.Sum(nil))
-	chal.Mod(chal, curve.N)
-
-	return chal.Cmp(eq.C) == 0
+// P chooses r at random in Z_q and sends (a = g^r mod p) to the verifier
+func (p *Prover) GenerateProofData(generator *ec.GroupElement) {
+	x := common.GetRandomInt(p.Group.Q) //random x from Z_q
+	p.generator = generator
+	p.x = x
 }
 
-func MsgToBigInt(msg []byte) *big.Int { // This is not secure
-	curve1 := elliptic.P256()
-	curve := curve1.Params()
-	hashedMsg := sha512.Sum384(msg)
-	hashedMsgToBigInt := new(big.Int).SetBytes(hashedMsg[:])
-	qs := new(big.Int).Mod(hashedMsgToBigInt, curve.N)
-	qs1 := new(big.Int).Mod(qs, curve.B)
+func (p *Prover) GenerateH(generator *ec.GroupElement, group *ec.Group) *ec.GroupElement {
 
-	return qs1
+	random := common.GetRandomInt(p.Group.Q)
+	p.r = random
+
+	p.GenerateProofData(generator) // Prover generates random x
+	h := group.Exp(generator, p.x) //h = g^x
+	return h
+}
+
+// Perhaps not an obvious name for the method?..
+// A part of step 1 in the three-way-protocol.
+func (p *Prover) GenerateU() *ec.GroupElement {
+	return p.Group.Exp(p.generator, p.r) // u = g^r
+}
+
+// It receives challenge defined by a verifier, and returns z = r + challenge * w. >>>>>NOT MY COMMENT<<<<<
+func (p *Prover) GetProofData(challenge *big.Int) *big.Int {
+	// z = r + challenge * x >>>>>NOT MY COMMENT<<<<<
+	z := new(big.Int)
+	z.Mul(challenge, p.x) // z = c * x
+	z.Add(z, p.r)         // z = z + r
+	z.Mod(z, p.Group.Q)   // z mod group-generator
+	return z              // z = r + c*x
+}
+
+func (v *Verifier) SetH(h *ec.GroupElement) {
+	v.h = h
+}
+
+func (v *Verifier) SetU(u *ec.GroupElement) {
+	v.u = u
+}
+
+func (v *Verifier) SetGenerator(generator *ec.GroupElement) {
+	v.generator = generator
+}
+
+func (v *Verifier) GenerateChallenge() *big.Int {
+	challenge := common.GetRandomInt(v.Group.Q)
+	v.challenge = challenge
+	return challenge
+}
+
+func (v *Verifier) Verify(z *big.Int) bool {
+	left := v.Group.Exp(v.generator, z) //g^z
+	r := v.Group.Exp(v.h, v.challenge)  //h^c
+	right := v.Group.Mul(r, v.u)        //u * h^c
+	isOk := left.Equals(right)
+	return isOk
 }
 
 func main() {
-	user1 := User{
-		NewKeys(),
-		nil,
-	}
+	curve := ec.P256
+	group := ec.NewGroup(curve)    // Init group from curve
+	prover := NewProver(curve)     // Agents: prover
+	verifier := NewVerifier(curve) // Agents: verifier
 
-	user2 := User{
-		NewKeys(),
-		nil,
-	}
-	fmt.Println(".-------------------------------------------.")
-	fmt.Println("|  Hi! I'm the commitment equality bunny!   |")
-	fmt.Println("'-------------------------------------------'")
-	fmt.Println("    ^                                 	(\\_/)")
-	fmt.Println("    '-------------------------------- 	(O.o)")
-	fmt.Println("                                      	(> <)")
-	fmt.Println()
-	fmt.Println("Please input message for first commitment: ")
-	curve := elliptic.P256()
-	nonce, _ := rand.Int(rand.Reader, curve.Params().N)
+	r := common.GetRandomInt(group.Q)
+	generator := group.ExpBaseG(r)      //generator g for group
 
-	reader := bufio.NewReader(os.Stdin)
-	input, err := reader.ReadString('\n')
-	if err != nil {
-		log.Panic(err)
-		return
-	}
+	verifier.SetGenerator(generator)
+	prover.GenerateProofData(generator) // Prover generates random x
 
-	fmt.Printf("%s %v", "Creating first commitment for message: ", input)
+	h := prover.GenerateH(generator, group) //Prover calculates h = g^x
+	verifier.SetH(h)                        //Verifier gets h
+	u := prover.GenerateU()                   //Prover calculates u = g^r
+	verifier.SetU(u)                          //Verifier gets u
+	challenge := verifier.GenerateChallenge() //Verifier generates a challenge
 
-	input = strings.TrimSuffix(input, "\n")
-	inputToByte := []byte(input)
-	inputToBigInt := MsgToBigInt(inputToByte)
-	r1, _ := rand.Int(rand.Reader, curve.Params().N)
-	commit1 := user1.NewCommitment(inputToBigInt, r1)
+	z := prover.GetProofData(challenge) //Prover calculates z = r + cx
 
-	fmt.Printf("%s %#v", "Produced following first commitment: ", commit1)
-
-	//SECOND COMMIT
-	fmt.Println("Please input message for second commitment: ")
-
-	input2, err := reader.ReadString('\n')
-	if err != nil {
-		log.Panic(err)
-		return
-	}
-
-	fmt.Printf("%s %v", "Creating second commitment for message: ", input2)
-
-	input2 = strings.TrimSuffix(input2, "\n")
-	input2ToByte := []byte(input2)
-	input2ToBigInt := MsgToBigInt(input2ToByte)
-	r2, _ := rand.Int(rand.Reader, curve.Params().N)
-	commit2 := user2.NewCommitment(input2ToBigInt, r2)
-
-	fmt.Printf("%s %#v", "Produced following second commitment: ", commit2)
-
-	// EQUALITY PROOF
-	fmt.Println("Creating new equality proof")
-	proof := NewEqProofP256(inputToBigInt, r1, r2, nonce, &user1.Keys.PublicKey, &user2.Keys.PublicKey)
-	sameMsg := proof.OpenP256(commit1, commit2, nonce, &user1.Keys.PublicKey, &user2.Keys.PublicKey)
-
-	fmt.Println("Commits holds the same message: ", sameMsg)
-
+	verified := verifier.Verify(z) //Verifier verifies g^z = u * h^c
+	fmt.Println("Verifier verifies that prover knows of x.")
+	fmt.Println("Prover knows of x: ", verified)
 }
