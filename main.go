@@ -75,7 +75,7 @@ func (p *Prover) GetProofData(challenge *big.Int) *big.Int {
 	z := new(big.Int)
 	z.Mul(challenge, p.x) // z = c * x
 	z.Add(z, p.r)         // z = z + r
-	z.Mod(z, p.Group.Q)   // z mod group-generator
+	z.Mod(z, p.Group.Q)   // z mod group-order
 	return z              // z = r + c*x
 }
 
@@ -129,3 +129,4 @@ func main() {
 	fmt.Println("Verifier verifies that prover knows of x.")
 	fmt.Println("Prover knows of x: ", verified)
 }
+
