@@ -2,10 +2,10 @@ package zk
 
 import (
 	"math/big"
+
 	"github.com/xlab-si/emmy/crypto/common"
 	"github.com/xlab-si/emmy/crypto/ec"
 )
-
 
 type Verifier struct {
 	Group     *ec.Group
@@ -19,9 +19,8 @@ type Prover struct {
 	Group     *ec.Group
 	generator *ec.GroupElement
 	x         *big.Int
-	r         *big.Int // ProofRandomData
+	r         *big.Int
 }
-
 
 /*
 	- "github.com/xlab-si/emmy/crypto/ec"
@@ -52,13 +51,11 @@ func (p *Prover) GenerateProofData(generator *ec.GroupElement) {
 	p.x = x
 }
 
-func (p *Prover) GenerateH(generator *ec.GroupElement, group *ec.Group) *ec.GroupElement {
+func (p *Prover) GenerateH(generator *ec.GroupElement) *ec.GroupElement {
 
 	random := common.GetRandomInt(p.Group.Q)
 	p.r = random
-
-	p.GenerateProofData(generator) // Prover generates random x
-	h := group.Exp(generator, p.x) //h = g^x
+	h := p.Group.Exp(generator, p.x) //h = g^x
 	return h
 }
 
@@ -69,7 +66,7 @@ func (p *Prover) GenerateU() *ec.GroupElement {
 }
 
 // returns z = r + challenge * w.
-// Challenge is made by the verifier. 
+// Challenge is made by the verifier.
 func (p *Prover) GetProofData(challenge *big.Int) *big.Int {
 	z := new(big.Int)
 	z.Mul(challenge, p.x) // z = c * x
@@ -77,7 +74,6 @@ func (p *Prover) GetProofData(challenge *big.Int) *big.Int {
 	z.Mod(z, p.Group.Q)   // z mod group-order
 	return z              // z = r + c*x mod q
 }
-
 
 func (v *Verifier) SetH(h *ec.GroupElement) {
 	v.h = h

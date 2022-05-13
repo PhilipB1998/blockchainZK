@@ -22,7 +22,7 @@ func BenchmarkTest(b *testing.B) {
 		verifier.SetGenerator(generator)
 		prover.GenerateProofData(generator) // Prover generates random x
 
-		h := prover.GenerateH(generator, group)   //Prover calculates h = g^x
+		h := prover.GenerateH(generator)   //Prover calculates h = g^x
 		verifier.SetH(h)                          //Verifier gets h
 		u := prover.GenerateU()                   //Prover calculates u = g^r
 		verifier.SetU(u)                          //Verifier gets u
