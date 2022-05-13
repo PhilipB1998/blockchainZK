@@ -68,15 +68,16 @@ func (p *Prover) GenerateU() *ec.GroupElement {
 	return p.Group.Exp(p.generator, p.r) // u = g^r
 }
 
-// It receives challenge defined by a verifier, and returns z = r + challenge * w. >>>>>NOT MY COMMENT<<<<<
+// returns z = r + challenge * w.
+// Challenge is made by the verifier. 
 func (p *Prover) GetProofData(challenge *big.Int) *big.Int {
-	// z = r + challenge * x >>>>>NOT MY COMMENT<<<<<
 	z := new(big.Int)
 	z.Mul(challenge, p.x) // z = c * x
 	z.Add(z, p.r)         // z = z + r
 	z.Mod(z, p.Group.Q)   // z mod group-order
-	return z              // z = r + c*x
+	return z              // z = r + c*x mod q
 }
+
 
 func (v *Verifier) SetH(h *ec.GroupElement) {
 	v.h = h
