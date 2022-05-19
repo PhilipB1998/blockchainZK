@@ -11,7 +11,7 @@ date-released: 2022-05-19
 identifiers:
   - description: ZKP implementation
     type: doi
-    value: "https://github.com/PhilipB1998/blockchainZK/blob/main/zk/zk.go
+    value: "https://github.com/PhilipB1998/blockchainZK/blob/main/zk/zk.go"
   - description: NIZKP implementation
     type: doi
     value: "https://github.com/PhilipB1998/blockchainZK/blob/main/zk/nizk.go"
