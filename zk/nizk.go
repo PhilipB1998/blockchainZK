@@ -13,7 +13,6 @@ import (
 type Proof struct {
 	H         *ec.GroupElement
 	Generator *ec.GroupElement
-	U         *ec.GroupElement
 	Challenge *big.Int
 	Z         *big.Int
 
@@ -47,7 +46,6 @@ func MakeProof(hash crypto.Hash, secret_x *big.Int) *Proof {
 	return &Proof{
 		H:         h,
 		Generator: generator,
-		U:         u,
 		Challenge: c,
 		Z:         z,
 
@@ -59,9 +57,9 @@ func MakeProof(hash crypto.Hash, secret_x *big.Int) *Proof {
 func (proof *Proof) VerifyProof() bool {
 	group := proof.group
 	curve := ec.P256
-	a := group.Exp(proof.Generator, proof.Z) //g^z 
-	b := group.Exp(proof.H, proof.Challenge)    //h^c
-	c := group.Mul(a, b)              //u * h^c
+	a := group.Exp(proof.Generator, proof.Z) //g^z
+	b := group.Exp(proof.H, proof.Challenge) //h^c
+	c := group.Mul(a, b)                     //g^z * h^c
 
 	Hash := proof.hash.New()
 	Hash.Write(elliptic.Marshal(ec.GetCurve(curve), proof.Generator.X, proof.Generator.Y))
