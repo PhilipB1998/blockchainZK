@@ -59,7 +59,7 @@ func MakeProof(hash crypto.Hash, secret_x *big.Int) *Proof {
 func (proof *Proof) VerifyProof() bool {
 	group := proof.group
 	curve := ec.P256
-	a := group.Exp(proof.Generator, proof.Z) //g^z ok
+	a := group.Exp(proof.Generator, proof.Z) //g^z 
 	b := group.Exp(proof.H, proof.Challenge)    //h^c
 	c := group.Mul(a, b)              //u * h^c
 
