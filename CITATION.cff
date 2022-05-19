@@ -1,8 +1,19 @@
-cff-version: 1.0.0
+cff-version: 1.1.0
 message: "If you use this software, please cite it as below."
 authors:
   - family-names: Robert Venningbo
+    given-names: Robert Venningbo
   - family-names: Philip Bilbo  
+    given-names: Philip Bilbo
 title: "Schnorr ZKP and NIZKP Implementation"
 version: 1.0.0
 date-released: 2022-05-19
+identifiers:
+  - description: ZKP implementation
+    type: doi
+    value: "https://github.com/PhilipB1998/blockchainZK/blob/main/zk/zk.go
+  - description: NIZKP implementation
+    type: doi
+    value: "https://github.com/PhilipB1998/blockchainZK/blob/main/zk/nizk.go"
+License: Apache-2.0
+repository-code: "https://github.com/PhilipB1998/blockchainZK"
