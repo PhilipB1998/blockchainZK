@@ -53,7 +53,6 @@ func (p *Prover) GenerateProofData(generator *ec.GroupElement) {
 
 func (p *Prover) GenerateH(generator *ec.GroupElement) *ec.GroupElement {
 
-
 	h := p.Group.Exp(generator, p.x) //h = g^x
 	return h
 }
@@ -97,7 +96,7 @@ func (v *Verifier) GenerateChallenge() *big.Int {
 func (v *Verifier) Verify(z *big.Int) bool {
 	left := v.Group.Exp(v.generator, z) //g^z
 	r := v.Group.Exp(v.h, v.challenge)  //h^c
-	right := v.Group.Mul(r, v.u)        //u * h^c
+	right := v.Group.Mul(r, v.u)        //g^z * h^c
 	isOk := left.Equals(right)
 	return isOk
 }
