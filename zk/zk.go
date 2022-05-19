@@ -53,8 +53,7 @@ func (p *Prover) GenerateProofData(generator *ec.GroupElement) {
 
 func (p *Prover) GenerateH(generator *ec.GroupElement) *ec.GroupElement {
 
-	random := common.GetRandomInt(p.Group.Q)
-	p.r = random
+
 	h := p.Group.Exp(generator, p.x) //h = g^x
 	return h
 }
@@ -62,6 +61,8 @@ func (p *Prover) GenerateH(generator *ec.GroupElement) *ec.GroupElement {
 // Perhaps not an obvious name for the method?..
 // A part of step 1 in the three-way-protocol.
 func (p *Prover) GenerateU() *ec.GroupElement {
+	random := common.GetRandomInt(p.Group.Q)
+	p.r = random
 	return p.Group.Exp(p.generator, p.r) // u = g^r
 }
 
